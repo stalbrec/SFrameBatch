@@ -97,6 +97,7 @@ class JobManager(object):
         self.stayAlive = 0 # loop counter to see if program is running 
         self.numOfResubmit =0
         self.watch = None
+        self.batchJobs = 0
         self.printString = []
         self.keepGoing = options.keepGoing
         self.exitOnQuestion = options.exitOnQuestion
@@ -105,6 +106,7 @@ class JobManager(object):
     def process_jobs(self,InputData,Job):
         jsonhelper = HelpJSON(self.workdir+'/SubmissinInfoSave.p')
         number_of_processes = len(InputData)
+        self.update_BatchInfo()
         gc.disable()
         for process in xrange(number_of_processes):
             found = None
@@ -128,6 +130,9 @@ class JobManager(object):
     #the used function should soon return the pid of the job for killing and knowing if something failed
     def submit_jobs(self,OutputDirectory,nameOfCycle):
         for process in self.subInfo:
+            proceed = self.check_BatchInfo(process.numberOfFiles)
+            if not proceed:
+                return -1
             process.startingTime = time.time()
             process.arrayPid = submit_qsub(process.numberOfFiles,self.outputstream+str(process.name),str(process.name),self.workdir)
             print 'Submitted jobs',process.name, 'pid', process.arrayPid
@@ -154,6 +159,9 @@ class JobManager(object):
                             exit(-1)
                     ask = False
                 if batchstatus != 1:
+                    proceed = self.check_BatchInfo(1)
+                    if not proceed:
+                        return -1
                     process.pids[it-1] = resubmit(self.outputstream+process.name,process.name+'_'+str(it),self.workdir,self.header)
                     #print 'Resubmitted job',process.name,it, 'pid', process.pids[it-1]
                     self.printString.append('Resubmitted job '+process.name+' '+str(it)+' pid '+str(process.pids[it-1]))
@@ -302,6 +310,35 @@ class JobManager(object):
             if process.status==0:
                 return False
         return True
+
+    # update current number of jobs in condor_q 
+    def update_BatchInfo(self):
+        try:
+            proc_queryHTCStatus = subprocess.Popen(['condor_status','--submitters'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            status = proc_queryHTCStatus.communicate()[0]
+        except Exception as e:
+            print 'Not able to fetch number of users jobs on batch with condor_status'
+        jobs = {'R':0,'I':0,'H':0}
+        for l in status.split('\n'):
+            if os.environ['USER'] in l and 'sched' in l:
+                jobs['R'] += int(l.split()[2])
+                jobs['I'] += int(l.split()[3])
+                jobs['H'] += int(l.split()[4])
+
+        self.batchJobs = jobs['R']+jobs['I']+jobs['H']     
+
+    # check if user is allowed to submit attempted number of jobs
+    def check_BatchInfo(self, numberOfJobs):
+        if(self.header.BatchJobLimit>0):
+            self.update_BatchInfo()
+            freeSlots = self.header.BatchJobLimit - self.batchJobs
+            if (freeSlots - numberOfJobs) <= 0:
+                print 'You currently have %i jobs on HTCondor (of max. %i), and you are trying to submit more than %i additional jobs.'%(self.batchJobs,self.header.BatchJobLimit,freeSlots) 
+                print 'Adjust the jobsplitting or try again, once you have fewer jobs on HTCondor.'
+                print 'Nothing will be (re-)submitted at this moment.'
+                return False
+            else:
+                return True
 
 #class to take care of merging (maybe rethink design)
 class MergeManager(object):
