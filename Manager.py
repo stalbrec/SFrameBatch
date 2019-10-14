@@ -337,8 +337,7 @@ class JobManager(object):
                 print 'Adjust the jobsplitting or try again, once you have fewer jobs on HTCondor.'
                 print 'Nothing will be (re-)submitted at this moment.'
                 return False
-            else:
-                return True
+        return True
 
 #class to take care of merging (maybe rethink design)
 class MergeManager(object):
