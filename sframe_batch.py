@@ -200,6 +200,13 @@ def SFrameBatchMain(input_options):
             print ' Result.xml created for further jobs'
         #submit jobs if asked for
         if options.submit: manager.submit_jobs(cycle.OutputDirectory,nameOfCycle)
+        if header.BatchJobLimit > 0:
+            print 'checking if there were already jobs submitted:'
+            for process in manager.subInfo:
+                print process.reachedBatch
+                print any(process.reachedBatch)
+                print process.reachedBatch.count(True)
+            manager.submit_missing_jobs()
         manager.check_jobstatus(cycle.OutputDirectory, nameOfCycle,False,False)
         if options.resubmit: manager.resubmit_jobs()
         #get once into the loop for resubmission & merging

@@ -144,6 +144,14 @@ class JobManager(object):
             process.pids=[process.arrayPid+'.'+str(i) for i in range(process.numberOfFiles)]
             # if any(process.pids): 
             #     process.pids = ['']*process.numberOfFiles
+    def submit_missing_jobs(self):
+        array=[1,15]
+        for process in self.subInfo:
+            arraypid=submit_array(array,self.outputstream+str(process.name),str(process.name),self.workdir,self.header)
+            print arraypid
+            # for i in range(len(array)):
+            #     process.pids[array[i]] = str(arraypid)+'.'+str(i)
+                
     #resubmit the jobs see above      
     def resubmit_jobs(self):
         qstat_out = self.watch.parserWorked
