@@ -19,16 +19,22 @@ from xml.dom.minidom import parse, parseString
 import xml.sax
 
 
-# takes care of looking into qstat 
+# takes care of looking into qstat
 class pidWatcher(object):
     def __init__(self,subInfo):
         self.pidStates = {}
+        ListOfPids = [subInfo[k].arrayPid for k in range(len(subInfo)) if subInfo[k].arrayPid > 0 ]
         try:
             #looking into condor_q for jobs that are idle, running or hold (HTC State 1,2 and 5)
-            proc_cQueue = subprocess.Popen(['condor_q','-json'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            proc_cQueue = subprocess.Popen(['condor_q']+ListOfPids+['-af:,','GlobalJobId','JobStatus'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             cQueue_jsons = proc_cQueue.communicate()[0]
+            processes_json = []
             if cQueue_jsons:
-                processes_json = json.loads(cQueue_jsons)
+                for line in cQueue_jsons.split('\n'):
+                    if(',' not in line):
+                        continue
+                    GlobalJobId, JobStatus = line.strip().split(',')
+                    processes_json.append({'GlobalJobId':GlobalJobId,'JobStatus':int(JobStatus)})
                 self.parserWorked = True
             else:
                 self.parserWorked = False
@@ -39,7 +45,6 @@ class pidWatcher(object):
             print 'Going to wait for 5 minutes, lets see if condor_q will start to work again.'
             time.sleep(300)
             return
-        ListOfPids = [subInfo[k].arrayPid for k in range(len(subInfo))]
         if(any(i==-1 for i in ListOfPids)):
             self.parserWorked=False
         if self.parserWorked:
@@ -56,7 +61,7 @@ class pidWatcher(object):
                 self.pidStates.update({jobid:item["JobStatus"]})
 
     def check_pidstatus(self, pid, debug=False):
-        if '.' not in str(pid): pid = pid + '.0' 
+        if '.' not in str(pid): pid = pid + '.0'
         if pid not in self.pidStates:
             return -1
         state = str(self.pidStates[pid])
@@ -93,10 +98,10 @@ class JobManager(object):
         self.merge  = MergeManager(options.add,options.forceMerge,options.waitMerge,options.addNoTree)
         self.subInfo = [] #information about the submission status
         self.deadJobs = 0 #check if no file has been written to disk and nothing is on running on the batch
-        self.totalFiles = 0  
+        self.totalFiles = 0
         self.missingFiles = -1
         self.move_cursor_up_cmd = None # pretty print status
-        self.stayAlive = 0 # loop counter to see if program is running 
+        self.stayAlive = 0 # loop counter to see if program is running
         self.numOfResubmit =0
         self.watch = None
         self.batchJobs = 0
@@ -104,7 +109,7 @@ class JobManager(object):
         self.keepGoing = options.keepGoing
         self.exitOnQuestion = options.exitOnQuestion
         self.outputstream = self.workdir+'/Stream_'
-    #read xml file and do the magic 
+    #read xml file and do the magic
     def process_jobs(self,InputData,Job):
         jsonhelper = HelpJSON(self.workdir+'/SubmissinInfoSave.p')
         number_of_processes = len(InputData)
@@ -142,9 +147,9 @@ class JobManager(object):
             if process.status != 0:
                 process.status = 0
             process.pids=[process.arrayPid+'.'+str(i) for i in range(process.numberOfFiles)]
-            # if any(process.pids): 
+            # if any(process.pids):
             #     process.pids = ['']*process.numberOfFiles
-    #resubmit the jobs see above      
+    #resubmit the jobs see above
     def resubmit_jobs(self):
         qstat_out = self.watch.parserWorked
         ask = True
@@ -169,12 +174,12 @@ class JobManager(object):
                     self.printString.append('Resubmitted job '+process.name+' '+str(it)+' pid '+str(process.pids[it-1]))
                     if process.status != 0: process.status =0
                     process.reachedBatch[it-1] = False
-                    
-    #see how many jobs finished, were copied to workdir 
+
+    #see how many jobs finished, were copied to workdir
     def check_jobstatus(self, OutputDirectory, nameOfCycle,remove = False, autoresubmit = True):
         missing = open(self.workdir+'/missing_files.txt','w+')
         waitingFlag_autoresub = False
-        missingRootFiles = 0 
+        missingRootFiles = 0
         ListOfDict =[]
         self.watch = pidWatcher(self.subInfo)
         ask = True
@@ -184,14 +189,14 @@ class JobManager(object):
             rootFiles =0
             self.subInfo[i].missingFiles = []
             for it in range(process.numberOfFiles):
-                if process.jobsDone[it]: 
+                if process.jobsDone[it]:
                     rootFiles+=1
                     continue
                 #have a look at the pids with qstat
                 batchstatus = self.watch.check_pidstatus(process.pids[it])
                 #kill batchjobs with error otherwise update batchinfo
                 batchstatus = process.process_batchStatus(batchstatus,it)
-                #check if files have arrived 
+                #check if files have arrived
                 filename = OutputDirectory+'/'+self.workdir+'/'+nameOfCycle+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root'
                 #if process.jobsRunning[it]:
                 #print filename, os.path.exists(filename), process.jobsRunning[it], process.jobsDone[it], process.arrayPid, process.pids[it]
@@ -203,12 +208,12 @@ class JobManager(object):
                     missingRootFiles +=1
                 else:
                     rootFiles+=1
-                #auto resubmit if job dies, take care that there was some job before and warn the user if more then 10% of jobs die 
+                #auto resubmit if job dies, take care that there was some job before and warn the user if more then 10% of jobs die
                 #print process.name,'batch status',batchstatus, 'process.reachedBatch',process.reachedBatch, 'process status',process.status,'resubmit counter',process.resubmit[it], 'resubmit active',autoresubmit
                 if (
                     process.notFoundCounter[it] > 5 and
                     not process.jobsRunning[it] and
-                    not process.jobsDone[it] and 
+                    not process.jobsDone[it] and
                     process.reachedBatch[it] and
                     (process.resubmit[it] ==-1 or process.resubmit[it]>0) and
                     (process.pids[it] or process.arrayPid) and
@@ -225,13 +230,14 @@ class JobManager(object):
                     #print 'resubmitting', process.name+'_'+str(it+1),es not Found',process.notFoundCounter[it], 'pid', process.pids[it], process.arrayPid, 'task',it+1
                     waitingFlag_autoresub = True
                     process.pids[it] = resubmit(self.outputstream+process.name,process.name+'_'+str(it+1),self.workdir,self.header)
+                    process.status = 0
                     #print 'AutoResubmitted job',process.name,it, 'pid', process.pids[it]
                     self.printString.append('File Found '+str(os.path.exists(filename)))
                     if os.path.exists(filename): self.printString.append('Timestamp is ok '+str(process.startingTime < os.path.getctime(filename)))
                     self.printString.append('AutoResubmitted job '+process.name+' '+str(it)+' pid '+str(process.pids[it]))
                     #time.sleep(5)
                     process.reachedBatch[it] = False
-                    if process.resubmit[it] > 0 : 
+                    if process.resubmit[it] > 0 :
                         process.resubmit[it] -= 1
                         self.numOfResubmit +=1
             # final status updates
@@ -257,7 +263,7 @@ class JobManager(object):
             missing.close()
         except IOError as e:
             print "I/O error({0}): {1}".format(e.errno, e.strerror)
-            
+
         self.missingFiles = missingRootFiles
         #Save/update pids and other information to json file, such that it can be loaded and used later
         try:
@@ -267,9 +273,9 @@ class JobManager(object):
         except IOError as e:
             print "I/O error({0}): {1}".format(e.errno, e.strerror)
         if(waitingFlag_autoresub): time.sleep(5)
-        
-                
-    #print status of jobs 
+
+
+    #print status of jobs
     def print_status(self):
         if not self.move_cursor_up_cmd:
             self.move_cursor_up_cmd = '\x1b[1A\x1b[2K'*(len(self.subInfo) + 3)
@@ -278,14 +284,14 @@ class JobManager(object):
         else:
               print self.move_cursor_up_cmd
               #time.sleep(.1)  # 'blink'
-        
+
         for item in self.printString:
             print item
         self.printString = []
 
         stayAliveArray = ['|','/','-','\\']
         if self.stayAlive < 3:
-           self.stayAlive +=1  
+           self.stayAlive +=1
         else:
             self.stayAlive = 0
 
@@ -299,7 +305,7 @@ class JobManager(object):
             readyFiles += process.rootFileCounter
         print 'Number of files: ',readyFiles,'/',self.totalFiles,'(%.3i)' % (100*(1-float(readyFiles)/float(self.totalFiles))),stayAliveArray[self.stayAlive],stayAliveArray[self.stayAlive]
         print '='*80
-    
+
     #take care of merging
     def merge_files(self,OutputDirectory,nameOfCycle,InputData):
         self.merge.merge(OutputDirectory,nameOfCycle,self.subInfo,self.workdir,InputData,self.outputstream)
@@ -313,7 +319,7 @@ class JobManager(object):
                 return False
         return True
 
-    # update current number of jobs in condor_q 
+    # update current number of jobs in condor_q
     def update_BatchInfo(self):
         try:
             proc_queryHTCStatus = subprocess.Popen(['condor_status','--submitters'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -327,7 +333,7 @@ class JobManager(object):
                 jobs['I'] += int(l.split()[3])
                 jobs['H'] += int(l.split()[4])
 
-        self.batchJobs = jobs['R']+jobs['I']+jobs['H']     
+        self.batchJobs = jobs['R']+jobs['I']+jobs['H']
 
     # check if user is allowed to submit attempted number of jobs
     def check_BatchInfo(self, numberOfJobs):
@@ -335,7 +341,7 @@ class JobManager(object):
             self.update_BatchInfo()
             freeSlots = self.header.BatchJobLimit - self.batchJobs
             if (freeSlots - numberOfJobs) <= 0:
-                print 'You currently have %i jobs on HTCondor (of max. %i), and you are trying to submit more than %i additional jobs.'%(self.batchJobs,self.header.BatchJobLimit,freeSlots) 
+                print 'You currently have %i jobs on HTCondor (of max. %i), and you are trying to submit more than %i additional jobs.'%(self.batchJobs,self.header.BatchJobLimit,freeSlots)
                 print 'Adjust the jobsplitting or try again, once you have fewer jobs on HTCondor.'
                 print 'Nothing will be (re-)submitted at this moment.'
                 return False
@@ -357,8 +363,8 @@ class MergeManager(object):
             return False
 
     def merge(self,OutputDirectory,nameOfCycle,info,workdir,InputData,outputdir):
-        if not self.add and not self.force and not self.onlyhist: return  
-        #print "Don't worry your are using nice = 10" 
+        if not self.add and not self.force and not self.onlyhist: return
+        #print "Don't worry your are using nice = 10"
         OutputTreeName = ""
         for inputObj in InputData:
             for mylist in inputObj.io_list.other:
@@ -372,7 +378,7 @@ class MergeManager(object):
             if (not os.path.exists(OutputDirectory+'/'+nameOfCycle+'.'+process.data_type+'.'+process.name+'.root') and all(process.jobsDone) and process.status !=2 ) or self.force:
                 self.active_process.append(add_histos(OutputDirectory,nameOfCycle+'.'+process.data_type+'.'+process.name,process.numberOfFiles,workdir,OutputTreeName,self.onlyhist,outputdir+process.name))
                 process.status = 2
-            #elif process.status !=2: 
+            #elif process.status !=2:
             #    process.status = 3
 
     def wait_till_finished(self):
