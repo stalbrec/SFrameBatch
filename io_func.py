@@ -132,6 +132,7 @@ class fileheader(object):
         self.AutoResubmit =0
         self.MaxJobsPerProcess = -1
         self.RemoveEmptyFileSplit = False
+        self.BatchJobLimit = 5000
         while '<JobConfiguration' not in line:
             self.header.append(line)
             line = f.readline()
@@ -145,6 +146,8 @@ class fileheader(object):
                     self.MaxJobsPerProcess = int(self.ConfigParse.attributes['MaxJobsPerProcess'].value)
                 if self.ConfigParse.hasAttribute('RemoveEmptyFileSplit'):
                     self.RemoveEmptyFileSplit = bool(self.ConfigParse.attributes['RemoveEmptyFileSplit'].value)
+                if self.ConfigParse.hasAttribute('BatchJobLimit'):
+                    self.BatchJobLimit = int(self.ConfigParse.attributes['BatchJobLimit'].value)
 
             if 'ConfigSGE' in line:
                 self.ConfigSGE = parseString(line).getElementsByTagName('ConfigSGE')[0]
@@ -298,7 +301,3 @@ def result_info(Job, path, header, other = []):
     outfile.close()
     
     return 1
-
-
-
-

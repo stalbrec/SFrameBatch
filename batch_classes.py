@@ -60,6 +60,55 @@ fileindex         = $INT(MyIndex,%d)
 arguments         = """+name+"""_$(fileindex).xml
 """)
     submit_file.close()
+
+
+def write_array_script(name,workdir,header):
+    sframe_wrapper=open(workdir+'/sframe_wrapper.sh','w')
+    sframe_wrapper.write(
+        """#!/bin/bash
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH_STORED
+sframe_main $1
+        """)
+    sframe_wrapper.close()
+    os.system('chmod u+x '+workdir+'/sframe_wrapper.sh')    
+    if (header.Notification == 'as'):
+        condor_notification = 'Error'
+    elif (header.Notification == 'n'):
+        condor_notification = 'Never'
+    elif (header.Notification == 'e'):
+        condor_notification = 'Complete'
+    else:
+        condor_notification = ''
+        
+    submit_file = open(workdir+'/CondorSubmitfile_'+name+'.submit','w')
+    submit_file.write(
+        """#HTC Submission File for SFrameBatch
+# +MyProject        =  "af-cms" 
+requirements      =  OpSysAndVer == "SL6"
+universe          = vanilla
+# #Running in local mode with 8 cpu slots
+# universe          =  local
+# request_cpus      =  8 
+notification      = """+condor_notification+"""
+notify_user       = """+header.Mail+"""
+initialdir        = """+workdir+"""
+output            = $(Stream)/"""+name+""".o$(ClusterId).$(Process)
+error             = $(Stream)/"""+name+""".e$(ClusterId).$(Process)
+log               = $(Stream)/"""+name+""".$(Cluster).log
+#Requesting CPU and DISK Memory - default +RequestRuntime of 3h stays unaltered
+RequestMemory     = """+header.RAM+"""G
+RequestDisk       = """+header.DISK+"""G
+#You need to set up sframe
+getenv            = True
+environment       = "LD_LIBRARY_PATH_STORED="""+os.environ.get('LD_LIBRARY_PATH')+""""
+JobBatchName      = """+name+"""
+executable        = """+workdir+"""/sframe_wrapper.sh
+#MyIndex           = $(Process) + 1
+#fileindex         = $INT(MyIndex,%d)
+fileindex         = $(ITEM)
+arguments         = """+name+"""_$(fileindex).xml
+""")
+    submit_file.close()
         
 def resub_script(name,workdir,header):    
     if (header.Notification == 'as'):
@@ -133,6 +182,15 @@ def resubmit(Stream,name,workdir,header):
     proc_qstat = Popen(['condor_submit'+' '+workdir+'/CondorSubmitfile_'+name+'.submit'+' -a "Stream='+Stream.split('/')[1]+'"'],shell=True,stdout=PIPE)
     return (proc_qstat.communicate()[0].split()[7]).split('.')[0]
 
+def submit_array(array,Stream,name,workdir,header):
+    write_array_script(name,workdir,header)
+    array_string=''
+    for i in array:
+        array_string+='%i, '%i
+    proc_subArray = Popen(['condor_submit'+' '+workdir+'/CondorSubmitfile_'+name+'.submit'+' -a "Stream='+Stream.split('/')[1]+'" -a "queue in ('+array_string+')"'],shell=True,stdout=PIPE)
+
+    return (proc_subArray.communicate()[0].split()[7]).split('.')[0]
+        
 def add_histos(directory,name,NFiles,workdir,outputTree, onlyhists,outputdir):
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
