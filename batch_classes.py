@@ -13,7 +13,9 @@ def write_script(name,workdir,header):
     sframe_wrapper=open(workdir+'/sframe_wrapper.sh','w')
     sframe_wrapper.write(
         """#!/bin/bash
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH_STORED
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LD_LIBRARY_PATH_STORED
+export PATH=$PATH:$PATH_STORED
+echo $(uname -r)
 sframe_main $1
         """)
     sframe_wrapper.close()
@@ -27,15 +29,16 @@ sframe_main $1
     else:
         condor_notification = ''
 
-    if('slc7' in os.getenv('SCRAM_ARCH')):
-        requirements_str = 'OpSysAndVer == "CentOS7"'
-    else:
-        requirements_str='OpSysAndVer == "SL6" || OpSysAndVer == "CentOS7"'
+    # if('slc7' in os.getenv('SCRAM_ARCH')):
+    requirements_str = 'OpSysAndVer == "CentOS7"'
+    # else:
+        # requirements_str='OpSysAndVer == "SL6" || OpSysAndVer == "CentOS7"'
         
     submit_file = open(workdir+'/CondorSubmitfile_'+name+'.submit','w')
     submit_file.write(
         """#HTC Submission File for SFrameBatch
 # +MyProject        =  "af-cms" 
++MySingularityImage="/cvmfs/unpacked.cern.ch/registry.hub.docker.com/cmssw/slc6:latest"
 requirements      =  """ + requirements_str + """
 universe          = vanilla
 # #Running in local mode with 8 cpu slots
@@ -52,7 +55,7 @@ RequestMemory     = """+header.RAM+"""G
 RequestDisk       = """+header.DISK+"""G
 #You need to set up sframe
 getenv            = True
-environment       = "LD_LIBRARY_PATH_STORED="""+os.environ.get('LD_LIBRARY_PATH')+""""
+environment       = "LD_LIBRARY_PATH_STORED="""+os.environ.get('LD_LIBRARY_PATH')+" PATH_STORED="""+os.environ.get('PATH')+""""
 JobBatchName      = """+name+"""
 executable        = """+workdir+"""/sframe_wrapper.sh
 MyIndex           = $(Process) + 1
