@@ -74,16 +74,17 @@ def resub_script(name,workdir,header):
     else:
         condor_notification = ''
         
-    if('slc7' in os.getenv('SCRAM_ARCH')):
-        requirements_str = 'OpSysAndVer == "CentOS7"'
-    else:
-        requirements_str='OpSysAndVer == "SL6" || OpSysAndVer == "CentOS7"'
+    # if('slc7' in os.getenv('SCRAM_ARCH')):
+    requirements_str = 'OpSysAndVer == "CentOS7"'
+    # else:
+        # requirements_str='OpSysAndVer == "SL6" || OpSysAndVer == "CentOS7"'
 
 
     submitfile = open(workdir+'/CondorSubmitfile_'+name+'.submit','w')
     submitfile.write(
 """#HTC Submission File for SFrameBatch
 # +MyProject        =  "af-cms" 
++MySingularityImage="/cvmfs/unpacked.cern.ch/registry.hub.docker.com/cmssw/slc6:latest"
 requirements      =  """ + requirements_str + """
 universe          = vanilla
 # #Running in local mode with 8 cpu slots
@@ -101,7 +102,7 @@ RequestMemory     = 8G
 RequestDisk       = """+header.DISK+"""G
 #You need to set up sframe
 getenv            = True
-environment       = "LD_LIBRARY_PATH_STORED="""+os.environ.get('LD_LIBRARY_PATH')+""""
+environment       = "LD_LIBRARY_PATH_STORED="""+os.environ.get('LD_LIBRARY_PATH')+" PATH_STORED="""+os.environ.get('PATH')+""""
 JobBatchName      = """+name+"""
 executable        = """+workdir+"""/sframe_wrapper.sh
 arguments         = """+name+""".xml
