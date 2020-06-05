@@ -174,7 +174,7 @@ def SFrameBatchMain(input_options):
         shutil.copy(args[0],workdir)
     #print header.Version[0]
 
-    for cycle in Job.Job_Cylce:
+    for cycle in Job.Job_Cycle:
         if len(options.outputdir)>0:
             print 'Overwriting',cycle.OutputDirectory,'with',options.outputdir
             cycle.OutputDirectory=options.outputdir

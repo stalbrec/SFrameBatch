@@ -19,9 +19,9 @@ class JobConfig(object):
         for child in node.getElementsByTagName('Package'):
             for pack in child.attributes.items():
                 self.Packs.append(lib[1])
-        self.Job_Cylce = []
+        self.Job_Cycle = []
         for item in node.getElementsByTagName('Cycle'):
-            self.Job_Cylce.append(Cycle(item))
+            self.Job_Cycle.append(Cycle(item))
 
 class Cycle(object):
     def __init__(self,node):       
