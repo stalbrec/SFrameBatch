@@ -106,7 +106,9 @@ def SFrameBatchMain(input_options):
                       action='store_true',
                       help='Force job to be run on EL7 node. '
                       'If SLC6 environment, will use singularity.')
-
+    parser.add_option("--addCycles",
+                      action="store",
+                      dest="addCycles")
 
     (options, args) = parser.parse_args(input_options)
     
@@ -159,7 +161,13 @@ def SFrameBatchMain(input_options):
 
     node = xmlparsed.getElementsByTagName('JobConfiguration')[0]
     Job = JobConfig(node)
-    
+
+    if(options.addCycles):
+        import json
+        new_cycles = json.loads(options.addCycles)
+        for new_cycle_name, user_config_replacements in new_cycles.items():
+            Job.addCycle(new_cycle_name,user_config_replacements)
+        
     workdir = header.Workdir
     if options.workdir:
         print "Overwriting workdir:",workdir,"with",options.workdir
