@@ -41,7 +41,7 @@ def write_job(Job,Version=-1,SkipEvents=0,MaxEvents=-1,NFile=None, FileSplit=-1,
         # Set Attr.
         tempChild.setAttribute( 'Name', pack)
         
-    for cycle in Job.Job_Cylce:
+    for cycle in Job.Job_Cycle:
         # Create Element
         tempChild = doc.createElement('Cycle')
         root.appendChild(tempChild)
@@ -156,7 +156,7 @@ class fileheader(object):
         f.close()   
 
 def get_number_of_events(Job, Version, atleastOneEvent = False):
-    InputData = filter(lambda inp: inp.Version==Version[0], Job.Job_Cylce[0].Cycle_InputData)[0]
+    InputData = filter(lambda inp: inp.Version==Version[0], Job.Job_Cycle[0].Cycle_InputData)[0]
     NEvents = 0
     if len(InputData.io_list.FileInfoList[:])<5:
         atleastOneEvent=False
@@ -222,7 +222,7 @@ def write_all_xml(path,datasetName,header,Job,workdir):
                 print 'No entries found for',entry,'Going to ignore this sample.'
                 continue
             print 'Splitting job by files',entry
-            for cycle in Job.Job_Cylce:
+            for cycle in Job.Job_Cycle:
                 for p in xrange(len(cycle.Cycle_InputData)):
                     if(cycle.Cycle_InputData[p].Version==entry) or Version ==-1:
 		        Total_xml = len(cycle.Cycle_InputData[p].io_list.FileInfoList)
@@ -255,7 +255,7 @@ def write_all_xml(path,datasetName,header,Job,workdir):
 def result_info(Job, path, header, other = []):
     #get a xml file with all the infomartion that you need to proced
     ResultJob = copy.deepcopy(Job)
-    for cycle in ResultJob.Job_Cylce:
+    for cycle in ResultJob.Job_Cycle:
         for inputdata in cycle.Cycle_InputData:
             #print inputdata.io_list.InputTree
             #print inputdata.io_list.other

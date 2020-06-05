@@ -19,19 +19,21 @@ class JobConfig(object):
         for child in node.getElementsByTagName('Package'):
             for pack in child.attributes.items():
                 self.Packs.append(lib[1])
-        self.Job_Cylce = []
+        self.Job_Cycle = []
         for item in node.getElementsByTagName('Cycle'):
-            self.Job_Cylce.append(Cycle(item))
+            self.Job_Cycle.append(Cycle(item))
 
     def addCycle(self,outDir=".",user_config_replacements={}):
         from copy import deepcopy
-        new_cycle = deepcopy(self.Job_Cylce[0])
+        new_cycle = deepcopy(self.Job_Cycle[0])
         print 'adding new cycle:', outDir
-        for name,value in user_config_replacements.items():
+        new_cycle.OutputDirectory += '/'+outDir
+        for name, value in user_config_replacements.items():
             for user_config_item in new_cycle.Cycle_UserConf:
                 if(name == user_config_item.Name):
                     print 'setting UserConfig %s for new Cycle: %s'%(name,value)
-        self.Job_Cylce.append(new_cycle)
+                    user_config_item.Value = value
+        self.Job_Cycle.append(new_cycle)
 
 class Cycle(object):
     def __init__(self,node):       
