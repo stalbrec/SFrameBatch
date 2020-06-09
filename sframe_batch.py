@@ -195,48 +195,48 @@ def SFrameBatchMain(input_options):
                         if item_name == cycle_item.Name:
                             print "Replacing",item_name,"Value:",cycle_item.Value ,"with",item_value
                             cycle_item.Value = item_value
-        print 'starting manager'
-        manager = JobManager(options,header,workdir)
-        manager.process_jobs(cycle.Cycle_InputData,Job)
-        nameOfCycle = cycle.Cyclename.replace('::','.')
-        #this small function creates a xml file with the expected files 
-        if result_info(Job, workdir, header,options.sframeTreeInfo) == 1: 
-            print ' Result.xml created for further jobs'
-        #submit jobs if asked for
-        if options.submit: manager.submit_jobs(cycle.OutputDirectory,nameOfCycle)
-        manager.check_jobstatus(cycle.OutputDirectory, nameOfCycle,False,False)
-        if options.resubmit: manager.resubmit_jobs()
-        #get once into the loop for resubmission & merging
+    print 'starting manager'
+    manager = JobManager(options,header,workdir)
+    manager.process_jobs(cycle.Cycle_InputData,Job)
+    nameOfCycle = cycle.Cyclename.replace('::','.')
+    #this small function creates a xml file with the expected files 
+    if result_info(Job, workdir, header,options.sframeTreeInfo) == 1: 
+        print ' Result.xml created for further jobs'
+    #submit jobs if asked for
+    if options.submit: manager.submit_jobs(cycle.OutputDirectory,nameOfCycle)
+    manager.check_jobstatus(cycle.OutputDirectory, nameOfCycle,False,False)
+    if options.resubmit: manager.resubmit_jobs()
+    #get once into the loop for resubmission & merging
 
-        if not options.loop and options.forceMerge and not options.waitMerge:
-            manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
-            manager.merge_files(cycle.OutputDirectory,nameOfCycle,cycle.Cycle_InputData)
-            return 0
+    if not options.loop and options.forceMerge and not options.waitMerge:
+        manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
+        manager.merge_files(cycle.OutputDirectory,nameOfCycle,cycle.Cycle_InputData)
+        return 0
 
         
-        loop_check = True 
-        while loop_check==True:   
-            if not options.loop:
-                loop_check = False
-                # This is necessary since qstat sometimes does not find the jobs it should monitor.
-                # So it checks that it does not find the job 5 times before auto resubmiting it.
-                for i in range(6):
-                    manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)       
-            else:
-                manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
+    loop_check = True 
+    while loop_check==True:   
+        if not options.loop:
+            loop_check = False
+            # This is necessary since qstat sometimes does not find the jobs it should monitor.
+            # So it checks that it does not find the job 5 times before auto resubmiting it.
+            for i in range(6):
+                manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)       
+        else:
+            manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
                
-            manager.merge_files(cycle.OutputDirectory,nameOfCycle,cycle.Cycle_InputData)
-            if manager.get_subInfoFinish() or (not manager.merge.get_mergerStatus() and manager.missingFiles==0):
-                print 'if grid pid information got lost root Files could still be transferring'
-                break
-            if options.loop: 
-                manager.print_status()
-                time.sleep(5)
-        #print 'Total progress', tot_prog
-        manager.merge_wait()
-        manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle,False,False)
-        print '-'*80
-        manager.print_status()
+        manager.merge_files(cycle.OutputDirectory,nameOfCycle,cycle.Cycle_InputData)
+        if manager.get_subInfoFinish() or (not manager.merge.get_mergerStatus() and manager.missingFiles==0):
+            print 'if grid pid information got lost root Files could still be transferring'
+            break
+        if options.loop: 
+            manager.print_status()
+            time.sleep(5)
+    #print 'Total progress', tot_prog
+    manager.merge_wait()
+    manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle,False,False)
+    print '-'*80
+    manager.print_status()
     stop = timeit.default_timer()
     print "SFrame Batch was running for",round(stop - start,2),"sec"
     #exit gracefully
