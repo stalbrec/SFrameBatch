@@ -114,8 +114,12 @@ class JobManager(object):
         self.el7_worker = options.el7worker  # enforce running on EL7 mahcine
 
     #read xml file and do the magic 
-    def process_jobs(self,InputData,Job):
+    def process_jobs(self,Job):
         jsonhelper = HelpJSON(self.workdir+'/SubmissinInfoSave.p')
+        cycles_match = Job.cycles_datasets_match() # check if all cycles have same datasets. if not raise NotImplementedError for now.
+        if(not cycles_match):
+            raise NotImplementedError("You are trying to submit multiple cycles with different InputDatasets. This is not yet implemented.")
+        InputData=Job.Job_Cycle[0].Cycle_InputData # since all cycles have same InputData at this point use just the one from first Cycle 
         number_of_processes = len(InputData)
         gc.disable()
         for process in xrange(number_of_processes):

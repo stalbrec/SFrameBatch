@@ -197,7 +197,8 @@ def SFrameBatchMain(input_options):
                             cycle_item.Value = item_value
     print 'starting manager'
     manager = JobManager(options,header,workdir)
-    manager.process_jobs(cycle.Cycle_InputData,Job)
+    # manager.process_jobs(cycle.Cycle_InputData,Job)
+    manager.process_jobs(Job)
     nameOfCycle = cycle.Cyclename.replace('::','.')
     #this small function creates a xml file with the expected files 
     if result_info(Job, workdir, header,options.sframeTreeInfo) == 1: 

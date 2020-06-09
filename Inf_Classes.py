@@ -23,6 +23,25 @@ class JobConfig(object):
         for item in node.getElementsByTagName('Cycle'):
             self.Job_Cycle.append(Cycle(item))
 
+    def cycles_datasets_match(self):
+        if(len(self.Job_Cycle)==1):
+            return True
+        import numpy as np
+
+        # check if number of datasets do match across cycles
+        number_of_datasets=[]
+        for cycle in self.Job_Cycle:
+            number_of_datasets.append(len(cycle.Cycle_InputData))
+        if( not all( np.array(number_of_datasets,dtype='float')/number_of_datasets[0] == 1 ) ):
+            return False
+
+        # check if datasets match across cycles (checking sequentially)
+        for cycle in self.Job_Cycle[1:]:
+            for i in range(number_of_datasets[0]):
+                if(self.Job_Cycle[0].Cycle_InputData[i] != cycle.Cycle_InputData[i]):
+                    return False
+        return True
+
 class Cycle(object):
     def __init__(self,node):       
         self.cacheData = 0
@@ -107,6 +126,17 @@ class InputData(object):
         self.NEventsBreak = NEventsBreak
         self.LastBreak = LastBreak   
         
+    def __eq__(self, other):
+        if(self.Lumi != other.Lumi or self.NEventsMax != other.NEventsMax or self.Type != other.Type \
+           or self.Version != other.Version or self.Cacheable != other.Cacheable or self.NEventsSkip != other.NEventsSkip \
+           or self.io_list.FileInfoList != other.io_list.FileInfoList or self.io_list.InputTree != other.io_list.InputTree \
+           or self.io_list.other != other.io_list.other):
+            return False
+        else:
+            return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
     
 class UserConfig(object):
     def __init__(self,Name,Value):
