@@ -196,21 +196,20 @@ def SFrameBatchMain(input_options):
                             print "Replacing",item_name,"Value:",cycle_item.Value ,"with",item_value
                             cycle_item.Value = item_value
     print 'starting manager'
-    manager = JobManager(options,header,workdir)
-    # manager.process_jobs(cycle.Cycle_InputData,Job)
-    manager.process_jobs(Job)
+    manager = JobManager(options,Job,header,workdir)
+    manager.process_jobs()
     nameOfCycle = cycle.Cyclename.replace('::','.')
     #this small function creates a xml file with the expected files 
     if result_info(Job, workdir, header,options.sframeTreeInfo) == 1: 
         print ' Result.xml created for further jobs'
     #submit jobs if asked for
     if options.submit: manager.submit_jobs()
-    manager.check_jobstatus(cycle.OutputDirectory, nameOfCycle,False,False)
+    manager.check_jobstatus(False,False)
     if options.resubmit: manager.resubmit_jobs()
     #get once into the loop for resubmission & merging
 
     if not options.loop and options.forceMerge and not options.waitMerge:
-        manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
+        manager.check_jobstatus()
         manager.merge_files(cycle.OutputDirectory,nameOfCycle,cycle.Cycle_InputData)
         return 0
 
@@ -222,9 +221,9 @@ def SFrameBatchMain(input_options):
             # This is necessary since qstat sometimes does not find the jobs it should monitor.
             # So it checks that it does not find the job 5 times before auto resubmiting it.
             for i in range(6):
-                manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)       
+                manager.check_jobstatus()       
         else:
-            manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
+            manager.check_jobstatus()
                
         manager.merge_files(cycle.OutputDirectory,nameOfCycle,cycle.Cycle_InputData)
         if manager.get_subInfoFinish() or (not manager.merge.get_mergerStatus() and manager.missingFiles==0):
@@ -235,7 +234,7 @@ def SFrameBatchMain(input_options):
             time.sleep(5)
     #print 'Total progress', tot_prog
     manager.merge_wait()
-    manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle,False,False)
+    manager.check_jobstatus(False,False)
     print '-'*80
     manager.print_status()
     stop = timeit.default_timer()

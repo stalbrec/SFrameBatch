@@ -9,19 +9,19 @@ class SubInfo(object):
     def __init__(self,name='',numberOfFiles=0,numberOfCycles=1,data_type='',resubmit =0):
         self.name = name
         self.numberOfFiles =numberOfFiles #number of expected files
-        self.numbeOfCycles = numberOfCycles
+        self.numberOfCycles = numberOfCycles
         self.numberOfJobs = numberOfFiles/numberOfCycles
         self.data_type = data_type
         self.rootFileCounter = 0 #number of expected files
         self.status = 0   # 0: init, 1: data on disk
         self.missingFiles = []
-        self.pids = ['']*numberOfJobs
+        self.pids = ['']*self.numberOfJobs
         self.notFoundCounter = [0]*numberOfFiles
-        self.reachedBatch = [False]*numberOfJobs
-        self.jobsRunning = [False]*numberOfJobs
-        self.jobsDone = [False]*numberOfJobs
+        self.reachedBatch = [False]*self.numberOfJobs
+        self.jobsRunning = [False]*self.numberOfJobs
+        self.jobsDone = [False]*self.numberOfJobs
         self.arrayPid = ''
-        self.resubmit = [resubmit]*numberOfJobs
+        self.resubmit = [resubmit]*self.numberOfJobs
         self.startingTime = 0
     def reset_resubmit(self,value):
         self.resubmit =[value]*self.numberOfJobs

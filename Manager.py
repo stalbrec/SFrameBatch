@@ -95,7 +95,7 @@ class HelpJSON:
         return None
 
 class JobManager(object):
-    def __init__(self,options,header,workdir):
+    def __init__(self,options,Job,header,workdir):
         self.header = header #how do I split stuff, sframe_batch header in xml file
         self.workdir = workdir #name of the workdir
         self.merge  = MergeManager(options.add,options.forceMerge,options.waitMerge,options.addNoTree)
@@ -112,14 +112,15 @@ class JobManager(object):
         self.exitOnQuestion = options.exitOnQuestion
         self.outputstream = self.workdir+'/Stream_'
         self.el7_worker = options.el7worker  # enforce running on EL7 mahcine
+        self.JobConfig = Job
 
     #read xml file and do the magic 
-    def process_jobs(self,Job):
+    def process_jobs(self):
         jsonhelper = HelpJSON(self.workdir+'/SubmissinInfoSave.p')
-        cycles_match = Job.cycles_datasets_match() # check if all cycles have same datasets. if not raise NotImplementedError for now.
+        cycles_match = self.JobConfig.cycles_datasets_match() # check if all cycles have same datasets. if not raise NotImplementedError for now.
         if(not cycles_match):
             raise NotImplementedError("You are trying to submit multiple cycles with different InputDatasets. This is not yet implemented.")
-        InputData=Job.Job_Cycle[0].Cycle_InputData # since all cycles have same InputData at this point use just the one from first Cycle 
+        InputData=self.JobConfig.Job_Cycle[0].Cycle_InputData # since all cycles have same InputData at this point use just the one from first Cycle 
         number_of_processes = len(InputData)
         gc.disable()
         for process in xrange(number_of_processes):
@@ -131,7 +132,7 @@ class JobManager(object):
                 if found:
                     self.subInfo.append(found)
             if not found:
-                self.subInfo.append(SubInfo(InputData[process].Version,write_all_xml(self.workdir+'/'+InputData[process].Version,processName,self.header,Job,self.workdir),len(Job.Job_Cycle),InputData[process].Type))
+                self.subInfo.append(SubInfo(InputData[process].Version,write_all_xml(self.workdir+'/'+InputData[process].Version,processName,self.header,self.JobConfig,self.workdir),len(self.JobConfig.Job_Cycle),InputData[process].Type))
             if self.subInfo[-1].numberOfFiles == 0:
                 print 'Removing',self.subInfo[-1].name
                 self.subInfo.pop()
@@ -177,7 +178,7 @@ class JobManager(object):
                     process.reachedBatch[it-1] = False
                     
     #see how many jobs finished, were copied to workdir 
-    def check_jobstatus(self, OutputDirectory, nameOfCycle,remove = False, autoresubmit = True):
+    def check_jobstatus(self,remove = False, autoresubmit = True):
         missing = open(self.workdir+'/missing_files.txt','w+')
         waitingFlag_autoresub = False
         missingRootFiles = 0 
@@ -189,26 +190,30 @@ class JobManager(object):
             ListOfDict.append(process.to_JSON())
             rootFiles =0
             self.subInfo[i].missingFiles = []
-            for it in range(process.numberOfFiles):
-                if process.jobsDone[it]: 
-                    rootFiles+=1
+            for it in range(process.numberOfJobs):
+                if process.jobsDone[it]:
+                    rootFiles += process.numberOfCycles
                     continue
                 #have a look at the pids with qstat
                 batchstatus = self.watch.check_pidstatus(process.pids[it])
                 #kill batchjobs with error otherwise update batchinfo
                 batchstatus = process.process_batchStatus(batchstatus,it)
-                #check if files have arrived 
-                filename = OutputDirectory+'/'+self.workdir+'/'+nameOfCycle+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root'
-                #if process.jobsRunning[it]:
-                #print filename, os.path.exists(filename), process.jobsRunning[it], process.jobsDone[it], process.arrayPid, process.pids[it]
-                if os.path.exists(filename) and process.startingTime < os.path.getctime(filename) and not process.jobsRunning[it]:
+                #check if files have arrived
+                files_exist=[]
+                for cycle in self.JobConfig.Job_Cycle:
+                    filename = cycle.OutputDirectory+'/'+self.workdir+'/'+cycle.Cyclename.replace('::','.')+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root'
+                    files_exist.append(os.path.exists(filename) and process.startingTime < os.path.getctime(filename) and not process.jobsRunning[it])
+                if all(files_exist):
                     process.jobsDone[it] = True
                 if not process.jobsDone[it]:
-                    missing.write(self.workdir+'/'+nameOfCycle+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root  sframe_main '+process.name+'_'+str(it+1)+'.xml\n')
+                    for i,file_exists in enumerate(files_exist):
+                        if(file_exists):
+                            continue
+                        missing.write(self.workdir+'/'+self.JobConfig.Job_Cycle[i].Cyclename.replace('::','.')+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root  sframe_main '+process.name+'_'+str(it+1)+'.xml\n')
                     self.subInfo[i].missingFiles.append(it+1)
-                    missingRootFiles +=1
+                    missingRootFiles += (files_exist).count(False)
                 else:
-                    rootFiles+=1
+                    rootFiles += process.numberOfCycles
                 #auto resubmit if job dies, take care that there was some job before and warn the user if more then 10% of jobs die 
                 #print process.name,'batch status',batchstatus, 'process.reachedBatch',process.reachedBatch, 'process status',process.status,'resubmit counter',process.resubmit[it], 'resubmit active',autoresubmit
                 if (
