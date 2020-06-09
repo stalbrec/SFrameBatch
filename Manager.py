@@ -131,7 +131,7 @@ class JobManager(object):
                 if found:
                     self.subInfo.append(found)
             if not found:
-                self.subInfo.append(SubInfo(InputData[process].Version,write_all_xml(self.workdir+'/'+InputData[process].Version,processName,self.header,Job,self.workdir),InputData[process].Type))
+                self.subInfo.append(SubInfo(InputData[process].Version,write_all_xml(self.workdir+'/'+InputData[process].Version,processName,self.header,Job,self.workdir),len(Job.Job_Cycle),InputData[process].Type))
             if self.subInfo[-1].numberOfFiles == 0:
                 print 'Removing',self.subInfo[-1].name
                 self.subInfo.pop()
@@ -140,19 +140,19 @@ class JobManager(object):
                 self.subInfo[-1].reset_resubmit(self.header.AutoResubmit) #Reset the retries every time you start
                 write_script(processName[0],self.workdir,self.header,self.el7_worker) #Write the scripts you need to start the submission
         gc.enable()
+
     #submit the jobs to the batch as array job
     #the used function should soon return the pid of the job for killing and knowing if something failed
-    def submit_jobs(self,OutputDirectory,nameOfCycle):
+    def submit_jobs(self):
         for process in self.subInfo:
             process.startingTime = time.time()
-            process.arrayPid = submit_qsub(process.numberOfFiles,self.outputstream+str(process.name),str(process.name),self.workdir)
+            process.arrayPid = submit_qsub(process.numberOfJobs,self.outputstream+str(process.name),str(process.name),self.workdir)
             print 'Submitted jobs',process.name, 'pid', process.arrayPid
             process.reachedBatch = [False]*process.numberOfFiles
             if process.status != 0:
                 process.status = 0
             process.pids=[process.arrayPid+'.'+str(i) for i in range(process.numberOfFiles)]
-            # if any(process.pids): 
-            #     process.pids = ['']*process.numberOfFiles
+
     #resubmit the jobs see above      
     def resubmit_jobs(self):
         qstat_out = self.watch.parserWorked

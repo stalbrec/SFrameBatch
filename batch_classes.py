@@ -148,18 +148,12 @@ queue
 """)
     submitfile.close()
 
-def submit_qsub(NFiles,Stream,name,workdir):
-    #print '-t 1-'+str(int(NFiles))
-    #call(['ls','-l'], shell=True)
-
+def submit_qsub(NJobs,Stream,name,workdir):
     if not os.path.exists(Stream):
         os.makedirs(Stream)
         print Stream+' has been created'
 
-    #call(['qsub'+' -t 1-'+str(NFiles)+' -o '+Stream+'/'+' -e '+Stream+'/'+' '+workdir+'/split_script_'+name+'.sh'], shell=True)
-    # proc_qstat = Popen(['condor_qsub'+' -t 1-'+str(NFiles)+' -o '+Stream+'/'+' -e '+Stream+'/'+' '+workdir+'/split_script_'+name+'.sh'],shell=True,stdout=PIPE)
-    # return (proc_qstat.communicate()[0].split()[2]).split('.')[0]
-    proc_qstat = Popen(['condor_submit'+' '+workdir+'/CondorSubmitfile_'+name+'.submit'+' -a "Stream='+Stream.split('/')[1]+'" -a "queue '+str(NFiles)+'"'],shell=True,stdout=PIPE)
+    proc_qstat = Popen(['condor_submit'+' '+workdir+'/CondorSubmitfile_'+name+'.submit'+' -a "Stream='+Stream.split('/')[1]+'" -a "queue '+str(NJobs)+'"'],shell=True,stdout=PIPE)
     return (proc_qstat.communicate()[0].split()[7]).split('.')[0]
 
 

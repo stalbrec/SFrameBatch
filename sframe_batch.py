@@ -204,7 +204,7 @@ def SFrameBatchMain(input_options):
     if result_info(Job, workdir, header,options.sframeTreeInfo) == 1: 
         print ' Result.xml created for further jobs'
     #submit jobs if asked for
-    if options.submit: manager.submit_jobs(cycle.OutputDirectory,nameOfCycle)
+    if options.submit: manager.submit_jobs()
     manager.check_jobstatus(cycle.OutputDirectory, nameOfCycle,False,False)
     if options.resubmit: manager.resubmit_jobs()
     #get once into the loop for resubmission & merging

@@ -6,23 +6,25 @@ import time
 
 # class for the submission information
 class SubInfo(object):
-    def __init__(self,name='',numberOfFiles=0,data_type='',resubmit =0):
+    def __init__(self,name='',numberOfFiles=0,numberOfCycles=1,data_type='',resubmit =0):
         self.name = name
         self.numberOfFiles =numberOfFiles #number of expected files
+        self.numbeOfCycles = numberOfCycles
+        self.numberOfJobs = numberOfFiles/numberOfCycles
         self.data_type = data_type
         self.rootFileCounter = 0 #number of expected files
         self.status = 0   # 0: init, 1: data on disk
         self.missingFiles = []
-        self.pids = ['']*numberOfFiles
+        self.pids = ['']*numberOfJobs
         self.notFoundCounter = [0]*numberOfFiles
-        self.reachedBatch = [False]*numberOfFiles
-        self.jobsRunning = [False]*numberOfFiles
-        self.jobsDone = [False]*numberOfFiles
+        self.reachedBatch = [False]*numberOfJobs
+        self.jobsRunning = [False]*numberOfJobs
+        self.jobsDone = [False]*numberOfJobs
         self.arrayPid = ''
-        self.resubmit = [resubmit]*numberOfFiles
+        self.resubmit = [resubmit]*numberOfJobs
         self.startingTime = 0
     def reset_resubmit(self,value):
-        self.resubmit =[value]*self.numberOfFiles
+        self.resubmit =[value]*self.numberOfJobs
     def to_JSON(self):
         json_s=json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
         json_s=''.join(json_s.split()) #remove line breaks and whitespace
