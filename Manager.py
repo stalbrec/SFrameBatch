@@ -132,7 +132,7 @@ class JobManager(object):
                 if found:
                     self.subInfo.append(found)
             if not found:
-                self.subInfo.append(SubInfo(InputData[process].Version,write_all_xml(self.workdir+'/'+InputData[process].Version,processName,self.header,self.JobConfig,self.workdir),len(self.JobConfig.Job_Cycle),InputData[process].Type))
+                self.subInfo.append(SubInfo(InputData[process].Version,write_all_xml(self.workdir+'/'+processName[0],processName,self.header,self.JobConfig,self.workdir),len(self.JobConfig.Job_Cycle),InputData[process].Type))
             if self.subInfo[-1].numberOfFiles == 0:
                 print 'Removing',self.subInfo[-1].name
                 self.subInfo.pop()
@@ -159,7 +159,14 @@ class JobManager(object):
         qstat_out = self.watch.parserWorked
         ask = True
         for process in self.subInfo:
+            missingFiles_dict = {}
 	    for it in process.missingFiles:
+                k,v = map(int,tuple(it.split('.')))
+                if k in missingFiles_dict:
+                    missingFiles_dict[k].append(v)
+                else:
+                    missingFiles_dict.update({k:[v]})
+	    for it,missing_cycles in missingFiles_dict.items():
                 batchstatus = self.watch.check_pidstatus(process.pids[it-1])
                 if qstat_out and batchstatus==-1 and ask:
                     print '\n' + str(qstat_out)
@@ -171,7 +178,14 @@ class JobManager(object):
                             exit(-1)
                     ask = False
                 if batchstatus != 1:
-                    process.pids[it-1] = resubmit(self.outputstream+process.name,process.name+'_'+str(it),self.workdir,self.header,self.el7_worker)
+                    if(len(missing_cycles) <= process.numberOfCycles):
+                        #create new xml which only touches cycles that are missing:
+                        name_suffix='_Cycles'+''.join(map(str,missing_cycles))
+                        print(it)
+                        write_all_xml(self.workdir+'/'+process.name,[process.name],self.header,self.JobConfig,self.workdir,it-1,missing_cycles,name_suffix)
+                    else:
+                        name_suffix=''
+                    process.pids[it-1] = resubmit(self.outputstream+process.name,process.name+'_'+str(it)+name_suffix,self.workdir,self.header,self.el7_worker)
                     #print 'Resubmitted job',process.name,it, 'pid', process.pids[it-1]
                     self.printString.append('Resubmitted job '+process.name+' '+str(it)+' pid '+str(process.pids[it-1]))
                     if process.status != 0: process.status =0
@@ -203,15 +217,17 @@ class JobManager(object):
                 for cycle in self.JobConfig.Job_Cycle:
                     filename = cycle.OutputDirectory+'/'+self.workdir+'/'+cycle.Cyclename.replace('::','.')+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root'
                     files_exist.append(os.path.exists(filename) and process.startingTime < os.path.getctime(filename) and not process.jobsRunning[it])
+                
                 if all(files_exist):
                     process.jobsDone[it] = True
                 if not process.jobsDone[it]:
-                    for i,file_exists in enumerate(files_exist):
+                    for j,file_exists in enumerate(files_exist):
                         if(file_exists):
                             continue
-                        missing.write(self.workdir+'/'+self.JobConfig.Job_Cycle[i].Cyclename.replace('::','.')+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root  sframe_main '+process.name+'_'+str(it+1)+'.xml\n')
-                    self.subInfo[i].missingFiles.append(it+1)
+                        missing.write(self.JobConfig.Job_Cycle[j].OutputDirectory+'/'+self.workdir+'/'+self.JobConfig.Job_Cycle[j].Cyclename.replace('::','.')+'.'+process.data_type+'.'+process.name+'_'+str(it)+'.root  sframe_main '+process.name+'_'+str(it+1)+'.xml\n')
+                        self.subInfo[i].missingFiles.append(str(it+1)+'.'+str(j))
                     missingRootFiles += (files_exist).count(False)
+                    rootFiles += files_exist.count(True)
                 else:
                     rootFiles += process.numberOfCycles
                 #auto resubmit if job dies, take care that there was some job before and warn the user if more then 10% of jobs die 

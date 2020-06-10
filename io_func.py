@@ -21,7 +21,7 @@ ROOT.PyConfig.IgnoreCommandLineOptions = True
 from Inf_Classes import *
 from batch_classes import *
 
-def write_job(Job,Version=-1,SkipEvents=0,MaxEvents=-1,NFile=None, FileSplit=-1,workdir="workdir",LumiWeight=1):
+def write_job(Job,Version=-1,SkipEvents=0,MaxEvents=-1,NFile=None, FileSplit=-1,workdir="workdir",LumiWeight=1,cycles = None):
     doc = Document()
     root = doc.createElement("JobConfiguration")
     root.setAttribute( 'JobName', Job.JobName)
@@ -41,7 +41,9 @@ def write_job(Job,Version=-1,SkipEvents=0,MaxEvents=-1,NFile=None, FileSplit=-1,
         # Set Attr.
         tempChild.setAttribute( 'Name', pack)
         
-    for cycle in Job.Job_Cycle:
+    for cycle_it,cycle in enumerate(Job.Job_Cycle):
+        if cycles and cycle_it not in cycles:
+            continue
         # Create Element
         tempChild = doc.createElement('Cycle')
         root.appendChild(tempChild)
@@ -179,7 +181,7 @@ def get_number_of_events(Job, Version, atleastOneEvent = False):
                     f.Close()
     return NEvents
 
-def write_all_xml(path,datasetName,header,Job,workdir):
+def write_all_xml(path,datasetName,header,Job,workdir,file_it=-1,cycles=None,name_suffix=''):
     NEventsBreak= header.NEventsBreak
     FileSplit=header.FileSplit
     FileSplitCompleteRemove = header.RemoveEmptyFileSplit
@@ -204,15 +206,17 @@ def write_all_xml(path,datasetName,header,Job,workdir):
         MaxEvents = NEventsBreak   
 
         for i in xrange(NFiles):
+            if(file_it>=0 and i != file_it):
+                continue
             if i*SkipEvents >= NEvents:
                 break 
             if (i+1)*MaxEvents >= NEvents:
                 MaxEvents = NEvents-i*SkipEvents
             LumiWeight = float(NEvents)/float(MaxEvents)
-            outfile = open(path+'_'+str(i+1)+'.xml','w+')
+            outfile = open(path+'_'+str(i+1)+name_suffix+'.xml','w+')
             for line in header.header:
                 outfile.write(line)
-            outfile.write(write_job(Job,Version,i*SkipEvents,MaxEvents,i,-1,workdir,LumiWeight))
+            outfile.write(write_job(Job,Version,i*SkipEvents,MaxEvents,i,-1,workdir,LumiWeight,cycles=cycles))
             outfile.close()
  
     elif FileSplit>0:
@@ -235,10 +239,12 @@ def write_all_xml(path,datasetName,header,Job,workdir):
                             print 'New number of Jobs',numberOfJobs,'Number of xml-Files per Job',numberOfSplits
 
                         for it in range(numberOfJobs):
-                            outfile = open(path+'_'+str(it+1)+'.xml','w+')
+                            if(file_it>=0 and it != file_it):
+                                continue
+                            outfile = open(path+'_'+str(it+1)+name_suffix+'.xml','w+')
                             for line in header.header:
                                 outfile.write(line)
-                            outfile.write(write_job(Job,Version,0,-1,it,numberOfSplits,workdir))
+                            outfile.write(write_job(Job,Version,0,-1,it,numberOfSplits,workdir,cycles=cycles))
                             outfile.close()
                             NFiles+=1
     else:
