@@ -148,8 +148,11 @@ class fileheader(object):
 
             if 'ConfigSGE' in line:
                 self.ConfigSGE = parseString(line).getElementsByTagName('ConfigSGE')[0]
-                self.RAM = self.ConfigSGE.attributes['RAM'].value
-                self.DISK = self.ConfigSGE.attributes['DISK'].value
+                # self.RAM = self.ConfigSGE.attributes['RAM'].value
+                # self.DISK = self.ConfigSGE.attributes['DISK'].value
+                self.RAM  = str(int(self.ConfigSGE.attributes['RAM'].value)*1024)       if self.ConfigSGE.hasAttribute('RAM')  else str(int(2*1024))
+                self.DISK = str(int(self.ConfigSGE.attributes['DISK'].value)*1024*1024) if self.ConfigSGE.hasAttribute('DISK') else str(int(3*1024*1024))
+                self.TIME = str(int(self.ConfigSGE.attributes['TIME'].value)*3600)      if self.ConfigSGE.hasAttribute('TIME') else str(int(3*3600))
                 self.Notification = self.ConfigSGE.attributes['Notification'].value
                 self.Mail = self.ConfigSGE.attributes['Mail'].value
                 self.Workdir = self.ConfigSGE.attributes['Workdir'].value

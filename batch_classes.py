@@ -4,6 +4,7 @@ from subprocess import call
 from subprocess import Popen
 from subprocess import PIPE
 import os
+import ROOT
 
 from tree_checker import *
 #from fhadd import fhadd
@@ -57,10 +58,11 @@ sframe_main $1
             worker_str += '+MySingularityArgs="--bind /tmp:/tmp"\n'
     else:
         # Choose worker node arch based on SCRAM_ARCH (not login node arch)
-        if 'slc7' in os.getenv('SCRAM_ARCH'):
-            worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" )'
-        else:
-            worker_str = 'Requirements = ( OpSysAndVer == "SL6" )'
+        worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" )'
+        #if 'slc7' in os.getenv('SCRAM_ARCH'):
+        #    worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" )'
+        #else:
+        #    worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" || OpSysAndVer == "SL6")'
 
     submit_file = open(workdir+'/CondorSubmitfile_'+name+'.submit','w')
     submit_file.write(
@@ -76,18 +78,21 @@ notify_user       = """+header.Mail+"""
 initialdir        = """+workdir+"""
 output            = $(Stream)/"""+name+""".o$(ClusterId).$(Process)
 error             = $(Stream)/"""+name+""".e$(ClusterId).$(Process)
-log               = $(Stream)/"""+name+""".$(Cluster).log
+log               = $(Stream)/"""+name+""".l$(ClusterId).$(Process)
 #Requesting CPU and DISK Memory - default +RequestRuntime of 3h stays unaltered
-RequestMemory     = """+header.RAM+"""G
-RequestDisk       = """+header.DISK+"""G
+RequestMemory     = """+header.RAM+"""
+RequestDisk       = """+header.DISK+"""
++RequestRuntime   = """+header.TIME+"""
 #You need to set up sframe
 getenv            = True
 environment       = "LD_LIBRARY_PATH_STORED="""+os.environ.get('LD_LIBRARY_PATH')+""" PATH_STORED="""+os.environ.get('PATH')+""""
-JobBatchName      = """+name+"""
+JobBatchName      = """+workdir+"""
 executable        = """+workdir+"""/sframe_wrapper.sh
 MyIndex           = $(Process) + 1
 fileindex         = $INT(MyIndex,%d)
 arguments         = """+name+"""_$(fileindex).xml
+max_retries       = 2
+retry_until       = ExitCode == 0
 """)
     submit_file.close()
 
@@ -114,10 +119,11 @@ def resub_script(name,workdir,header,el7_worker=False):
                 raise RuntimeError("Cannot find image, %s. Do not use one from /afs or /cvmfs." % SINGULARITY_IMG)
             worker_str += '+MySingularityImage="'+SINGULARITY_IMG+'"\n'
     else:
-        if 'slc7' in os.getenv('SCRAM_ARCH'):
-            worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" )'
-        else:
-            worker_str = 'Requirements = ( OpSysAndVer == "SL6" )'
+        worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" )'
+        # if 'slc7' in os.getenv('SCRAM_ARCH'):
+        #    worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" )'
+        #else:
+        #    worker_str = 'Requirements = ( OpSysAndVer == "CentOS7" || OpSysAndVer == "SL6")'
 
     submitfile = open(workdir+'/CondorSubmitfile_'+name+'.submit','w')
     submitfile.write(
@@ -133,15 +139,16 @@ notify_user       = """+header.Mail+"""
 initialdir        = """+workdir+"""
 output            = $(Stream)/"""+name+""".o$(ClusterId).$(Process)
 error             = $(Stream)/"""+name+""".e$(ClusterId).$(Process)
-log               = $(Stream)/"""+name+""".$(Cluster).log
+log               = $(Stream)/"""+name+""".l$(ClusterId).$(Process)
 #Requesting CPU and DISK Memory - default +RequestRuntime of 3h stays unaltered
-# RequestMemory     = """+header.RAM+"""G
+# RequestMemory     = """+header.RAM+"""
 RequestMemory     = 8G
-RequestDisk       = """+header.DISK+"""G
+RequestDisk       = """+header.DISK+"""
++RequestRuntime   = 43200
 #You need to set up sframe
 getenv            = True
 environment       = "LD_LIBRARY_PATH_STORED="""+os.environ.get('LD_LIBRARY_PATH')+""" PATH_STORED="""+os.environ.get('PATH')+""""
-JobBatchName      = """+name+"""
+JobBatchName      = """+workdir+"""
 executable        = """+workdir+"""/sframe_wrapper.sh
 arguments         = """+name+""".xml
 queue
@@ -194,6 +201,7 @@ def add_histos(directory,name,NFiles,workdir,outputTree, onlyhists,outputdir):
                 break
 
     for i in range(NFiles):
+	if not ROOT.TFile.Open(directory+workdir+'/'+name+'_'+str(i)+'.root'): continue
         if not position == i and not position == -1:
             string += ','+str(i)
         elif position ==-1:

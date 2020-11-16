@@ -10,10 +10,11 @@ def check_TreeExists(filename,treename):
      try:
           rootTree = rootfile.Get(str(treename))
           entries = rootTree.GetEntriesFast()
-          #print filename,'True entries',entries,entries>0
+          print filename,' entries: ',entries,entries>0
           return  entries>0
      except:
           #print 'False'
+          print 'tree '+treename+' in file '+filename+' has ==0 entries: '
           return False
      #entries = rootTree.GetEntriesFast()
      #if rootTree: return False
