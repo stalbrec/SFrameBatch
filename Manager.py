@@ -133,7 +133,7 @@ class JobManager(object):
                 self.subInfo.pop()
             else:
                 self.totalFiles += self.subInfo[-1].numberOfFiles
-                self.subInfo[-1].reset_resubmit(self.header.AutoResubmit) #Reset the retries every time you start
+                # self.subInfo[-1].reset_resubmit(self.header.AutoResubmit) #Reset the retries every time you start
                 write_script(processName[0],self.workdir,self.header,self.sl6_container) #Write the scripts you need to start the submission
         gc.enable()
     #submit the jobs to the batch as array job
@@ -173,7 +173,7 @@ class JobManager(object):
                     process.reachedBatch[it-1] = False
                     
     #see how many jobs finished, were copied to workdir 
-    def check_jobstatus(self, OutputDirectory, nameOfCycle,remove = False, autoresubmit = True):
+    def check_jobstatus(self, OutputDirectory, nameOfCycle, autoresubmit = False):
         missing = open(self.workdir+'/missing_files.txt','w+')
         waitingFlag_autoresub = False
         missingRootFiles = 0 

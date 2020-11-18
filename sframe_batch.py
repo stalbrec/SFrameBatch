@@ -108,6 +108,9 @@ def SFrameBatchMain(input_options):
     parser.add_option("--sl6container",
                       action='store_true',
                       help='Use singularity to run inside SL6-container on EL7-Nodes.')
+    parser.add_option("--AutoResubmit",
+                      action="store_true",
+                      help = 'This will enable the Auto Resubmission of jobs, while taking into account the number of retries specified in the XML. (per default AutoResumbit=0 )')
 
     (options, args) = parser.parse_args(input_options)
     if(options.el7worker):
@@ -206,7 +209,7 @@ def SFrameBatchMain(input_options):
             print ' Result.xml created for further jobs'
         #submit jobs if asked for
         if options.submit: manager.submit_jobs(cycle.OutputDirectory,nameOfCycle)
-        manager.check_jobstatus(cycle.OutputDirectory, nameOfCycle,False,False)
+        manager.check_jobstatus(cycle.OutputDirectory, nameOfCycle)
         if options.resubmit: manager.resubmit_jobs()
         #get once into the loop for resubmission & merging
 
@@ -223,9 +226,9 @@ def SFrameBatchMain(input_options):
                 # This is necessary since qstat sometimes does not find the jobs it should monitor.
                 # So it checks that it does not find the job 5 times before auto resubmiting it.
                 for i in range(6):
-                    manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)       
+                    manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle,options.AutoResubmit)       
             else:
-                manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
+                manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle,options.AutoResubmit)
                
             manager.merge_files(cycle.OutputDirectory,nameOfCycle,cycle.Cycle_InputData)
             if manager.get_subInfoFinish() or (not manager.merge.get_mergerStatus() and manager.missingFiles==0):
@@ -236,7 +239,7 @@ def SFrameBatchMain(input_options):
                 time.sleep(5)
         #print 'Total progress', tot_prog
         manager.merge_wait()
-        manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle,False,False)
+        manager.check_jobstatus(cycle.OutputDirectory,nameOfCycle)
         print '-'*80
         manager.print_status()
     stop = timeit.default_timer()
